@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth Test</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; padding: 20px; line-height: 1.6; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        button { cursor: pointer; padding: 10px; margin-top: 10px; }
+        input { padding: 8px; width: 250px; }
+        #user-info { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>Firebase Authentication Test</h2>
+    <div id="user-info">Not logged in.</div>
+    <button id="logoutBtn" style="display:none;">Sign Out</button>
+
+    <hr>
+
+    <div class="card">
+        <h3>1. Google Sign-In</h3>
+        <button id="googleBtn">Sign in with Google</button>
+    </div>
+
+    <div class="card">
+        <h3>2. Phone Verification</h3>
+        <input type="text" id="phoneNumber" placeholder="+917797565211" value="+917797565211">
+        <button id="sendOtpBtn">Send OTP</button>
+        
+        <div id="otpSection" style="display:none; margin-top:15px;">
+            <input type="text" id="otpCode" placeholder="Enter 6-digit OTP (123456)">
+            <button id="verifyOtpBtn">Verify OTP</button>
+        </div>
+        <div id="recaptcha-container"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithPopup, 
+            GoogleAuthProvider, 
+            RecaptchaVerifier, 
+            signInWithPhoneNumber,
+            signOut,
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqwyqFokA23BzzpW-vlfbZsKuF027p3ug",
+            authDomain: "anchuri-home.firebaseapp.com",
+            databaseURL: "https://anchuri-home-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "anchuri-home",
+            storageBucket: "anchuri-home.firebasestorage.app",
+            messagingSenderId: "604602457178",
+            appId: "1:604602457178:web:73e389473f192f4d52cc63"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        let confirmationResult = null;
+
+        // UI Elements
+        const userInfo = document.getElementById('user-info');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // Track Auth State
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userInfo.innerText = `Logged in as: ${user.displayName || user.phoneNumber || user.email}`;
+                logoutBtn.style.display = "block";
+            } else {
+                userInfo.innerText = "Not logged in.";
+                logoutBtn.style.display = "none";
+            }
+        });
+
+        // --- Google Sign In ---
+        document.getElementById('googleBtn').onclick = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        // --- Phone Auth ---
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible'
+        });
+
+        document.getElementById('sendOtpBtn').onclick = async () => {
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const appVerifier = window.recaptchaVerifier;
+            
+            try {
+                confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+                document.getElementById('otpSection').style.display = "block";
+                alert("OTP Sent!");
+            } catch (error) {
+                alert("Error: " + error.message);
+            }
+        };
+
+        document.getElementById('verifyOtpBtn').onclick = async () => {
+            const code = document.getElementById('otpCode').value;
+            try {
+                await confirmationResult.confirm(code);
+                alert("Phone Verified!");
+            } catch (error) {
+                alert("Invalid OTP: " + error.message);
+            }
+        };
+
+        // --- Logout ---
+        logoutBtn.onclick = () => signOut(auth);
+
+    </script>
+</body>
+</html>
